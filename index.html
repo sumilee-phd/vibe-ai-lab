@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AI 협업 체험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&family=Black+Han+Sans&display=swap">
+<style>
+/* Layout: 바이브코딩 덱의 다크그린·골드 무대 위, 세 개의 체험 스테이션을 탭으로 전환. 단일 다크 테마(덱과 같은 화면 톤). */
+:root{
+  --bg:#0c2a20; --panel:#123829; --panel2:#184634; --line:#2b5e49;
+  --fg:#eef3ec; --muted:#a9c2b4; --gold:#d8b24a; --gold-dim:#8f7a3a;
+  --ok:#6fd39b; --warn:#f0a35e; --bad:#ef7b7b;
+  --f-display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{text-wrap:balance;margin:0}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,44px);letter-spacing:.01em;line-height:1.15}
+h1 em{font-style:normal;color:var(--gold)}
+h2{font-size:20px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+p{margin:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--gold);font-weight:700}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+a{color:var(--gold)}
+header{display:flex;flex-direction:column;gap:10px}
+.plan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.plan a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--fg);background:var(--panel)}
+.plan a[aria-current="page"]{border-color:var(--gold);background:var(--panel2)}
+.plan b{font-size:15px}
+.plan .t{font-family:var(--f-mono);font-size:12px;color:var(--gold)}
+@media (max-width:640px){.plan{grid-template-columns:1fr}}
+section.station{display:flex;flex-direction:column;gap:16px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--gold-dim);padding-left:10px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+button,.btn{font:inherit;font-size:14px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--gold-dim)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--gold);color:#1b1606;border-color:var(--gold);font-weight:700}
+button.danger{border-color:#6b3a3a;background:#3a2020}
+button[aria-pressed="true"]{background:var(--gold);color:#1b1606;border-color:var(--gold);font-weight:700}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl > span{font-size:13px;color:var(--muted)}
+.sw{width:30px;height:30px;padding:0;border-radius:50%;border:2px solid transparent}
+.sw[aria-pressed="true"]{border-color:var(--fg);outline:2px solid var(--gold)}
+/* station 1 */
+.sweep{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:820px){.sweep{grid-template-columns:1fr}}
+.viewer-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.viewer{position:relative;aspect-ratio:941/1672;width:100%;max-width:min(100%,44vh);margin:0 auto;border-radius:10px;overflow:hidden;border:1px solid var(--line);touch-action:none;cursor:ew-resize;user-select:none}
+.viewer img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;max-width:none;pointer-events:none}
+.vTop{position:absolute;inset:0}
+.vLine{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--gold);box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.vLine::after{content:"◀▶";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--gold);color:#1b1606;font-size:11px;padding:4px 6px;border-radius:999px;white-space:nowrap}
+.vTag{position:absolute;top:8px;font-size:12px;font-weight:700;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:999px}
+.vTag.l{left:8px}.vTag.r{right:8px;color:var(--gold)}
+.ver-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.vers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ver{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center;text-align:left;padding:6px}
+.ver img{width:44px;height:78px;object-fit:cover;border-radius:4px}
+.ver span{display:flex;flex-direction:column;line-height:1.35;min-width:0}
+.ver[aria-pressed="true"] .muted{color:#3b3210}
+.box.inner{background:var(--bg);padding:12px;gap:8px}
+.prompt{font-family:var(--f-mono);font-size:12px;line-height:1.5;color:var(--fg);background:var(--panel);border-radius:6px;padding:8px;overflow-wrap:anywhere}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.chk{display:flex;justify-content:space-between;gap:6px;font-size:13px;padding:6px 10px}
+.chk.s0 b{color:var(--ok)}.chk.s1 b{color:var(--bad)}.chk.s1{border-color:#6b3a3a}.chk.s2 b{color:var(--muted)}
+.ref{margin:0;display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}
+.ref img{width:120px;border-radius:6px;border:1px solid var(--line)}
+.cuebox{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:640px){.cuebox{grid-template-columns:1fr}}
+.cuebox .stage{aspect-ratio:941/1672;border-radius:8px;overflow:hidden;border:1px solid var(--line);max-width:220px;width:100%}
+.cuebox canvas{width:100%;height:100%;display:block}
+.track{position:relative;height:46px;border-radius:8px;background:var(--panel2);border:1px solid var(--line)}
+.track .tick{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.track .tick span{position:absolute;bottom:-20px;left:-8px;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.track .cue{position:absolute;top:-4px;bottom:-4px;width:4px;margin-left:-2px;background:var(--gold);border-radius:2px}
+.track .cue::after{content:"큐";position:absolute;top:-20px;left:-6px;font-size:11px;color:var(--gold);font-weight:700}
+.track .head{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--fg)}
+input[type=range]{width:100%;accent-color:var(--gold)}
+select{font:inherit;font-size:14px;background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.time{font-family:var(--f-mono);font-size:13px;color:var(--gold)}
+/* station 2 */
+.chat{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow:auto;padding-right:4px}
+.msg{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;opacity:.28;transition:opacity .3s}
+.msg.on{opacity:1}
+.msg .n{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding-top:3px}
+.msg .who{font-weight:700;color:var(--gold);margin-right:6px}
+.out{display:flex;flex-direction:column;gap:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:500}
+td.when{font-family:var(--f-mono);font-size:13px;white-space:nowrap}
+.src{font-family:var(--f-mono);font-size:11px;color:var(--gold-dim);white-space:nowrap}
+.empty{font-size:13px;color:var(--muted)}
+.notice{white-space:pre-wrap;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:12px;font-size:14px}
+.notice .gap{color:var(--warn)}
+.acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.acts li{display:flex;gap:8px;align-items:baseline}
+.acts li::before{content:"";flex:none;width:12px;height:12px;border:1.5px solid var(--gold);border-radius:3px;transform:translateY(2px)}
+textarea{font:inherit;font-size:14px;width:100%;min-height:150px;resize:vertical;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px}
+.fresh{animation:fresh 1s ease}
+@keyframes fresh{from{background:rgba(216,178,74,.25)}to{background:transparent}}
+/* station 3 */
+.case{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.case{grid-template-columns:1fr}}
+.facts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.facts li{display:grid;grid-template-columns:5.5em 1fr;gap:8px}
+.facts li b{color:var(--muted);font-weight:500;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border-radius:999px}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bars .b{display:grid;grid-template-columns:9.5em 1fr 2.5em;gap:8px;align-items:center;font-size:13px}
+.bars .t{height:12px;border-radius:999px;background:var(--panel2);overflow:hidden}
+.bars .t i{display:block;height:100%;background:var(--gold);transition:width .5s}
+.bars .c{font-family:var(--f-mono);text-align:right}
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+.lines li{font-size:14px;background:var(--bg);border-radius:8px;padding:6px 10px}
+input[type=text]{font:inherit;font-size:14px;width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+footer.close{border:1px solid var(--gold-dim);border-radius:12px;padding:18px;background:linear-gradient(135deg,var(--panel2),var(--panel))}
+footer.close p{font-size:clamp(17px,2.4vw,22px);font-weight:700;text-wrap:balance}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">바이브코딩 워크숍 · 마지막 5분</span>
+    <h1>AI는 <em>답하는 도구</em>에서<br><em>함께 만들고 고치는 작업 환경</em>으로</h1>
+    <p class="muted">2026년 11월 셋째 주에 화제가 된 사례 세 가지를 직접 눌러 보는 모형입니다. 실제 제품이 아니라 흐름을 체험하기 위한 샘플입니다.</p>
+    <nav class="plan" aria-label="체험 순서">
+      <a href="#sweep" data-tab="sweep"><span class="t">① 1분</span><b>원하는 부분만 고치기</b><span class="small muted">라이벌열전 5화 인물 · Scene Sweep / On Cue</span></a>
+      <a href="#meeting" data-tab="meeting"><span class="t">② 1분</span><b>회의하면서 결과물까지</b><span class="small muted">Claude Meetings</span></a>
+      <a href="#check" data-tab="check"><span class="t">③ 3분</span><b>쓰기 전에 무엇을 확인할까</b><span class="small muted">Mansa 《They Left Us to Die》</span></a>
+    </nav>
+  </header>
+
+  <!-- ① -->
+  <section class="station" id="st-sweep">
+    <div class="box">
+      <h2>① 라이벌열전 5화 인물로 해보는 "원하는 부분만 고치기"</h2>
+      <p class="muted small">5화(무선 전신) 초안으로 마르코니와 테슬라를 ChatGPT 이미지 생성으로 만들었습니다. 테슬라는 1화 캐릭터 시트를 함께 넣었고, 마르코니는 글로만 설명했습니다. 오른쪽에서 버전을 고르고, 가운데 손잡이를 밀어 원본과 비교해 보세요.</p>
+      <div class="sweep">
+        <div class="viewer-col">
+          <div class="viewer" id="viewer">
+            <img id="vBase" alt="원본: 1901년 바닷가 절벽의 두 발명가" src="img/ep5_01.jpg">
+            <div class="vTop" id="vTopWrap"><img id="vTop" alt="" src="img/ep5_01.jpg"></div>
+            <div class="vLine" id="vLine"></div>
+            <span class="vTag l">원본</span><span class="vTag r" id="vTagR">원본</span>
+          </div>
+          <label class="ctl"><span>원본 ◀ 비교 손잡이 ▶ 선택 버전</span><input type="range" id="vRange" min="0" max="100" value="50"></label>
+        </div>
+        <div class="ver-col">
+          <div class="vers" id="vers" role="group" aria-label="버전 고르기"></div>
+          <div class="box inner">
+            <h3 id="vTitle">원본</h3>
+            <p class="small muted">보낸 지시</p>
+            <p class="prompt" id="vPrompt"></p>
+            <p class="small muted">달라진 곳 확인하기 <span class="muted">(눌러서 유지 → 바뀜 → ?)</span></p>
+            <div class="checks" id="checks"></div>
+            <button id="seenBtn">강사 관찰 메모 보기</button>
+            <p class="small" id="seen" hidden></p>
+          </div>
+          <figure class="ref">
+            <img src="img/ref_tesla.jpg" alt="1화 테슬라 캐릭터 시트">
+            <figcaption class="small muted">1화 테슬라 캐릭터 시트. 이 이미지를 함께 넣어 얼굴을 고정했습니다.</figcaption>
+          </figure>
+        </div>
+      </div>
+      <p class="note">Scene Sweep은 한 번 내린 수정을 여러 컷·카메라 각도에 걸쳐 일관되게 적용하는 연구 시연입니다(2026-11-11 공개). 지금 쓰는 이미지 생성 도구는 아직 한 장씩 지시해야 하고, 지시하지 않은 곳이 같이 바뀌기도 합니다. 그 차이를 직접 확인하는 것이 이 스테이션의 목적입니다.</p>
+    </div>
+
+    <div class="box">
+      <h2>동작이 일어나는 순간 정하기</h2>
+      <div class="cuebox">
+        <div class="stage"><canvas id="cueCanvas" aria-label="큐 타이밍 미리보기"></canvas></div>
+        <div class="ctl" style="gap:14px">
+          <div class="row">
+            <label class="row small">효과
+              <select id="cueAct"><option value="zoom">펀치 줌</option><option value="flash">조명 번쩍</option><option value="title">자막 등장</option></select>
+            </label>
+            <button class="primary" id="cuePlay">재생</button>
+            <span class="time" id="cueTime">0.0s / 4.0s</span>
+          </div>
+          <div style="padding-bottom:22px">
+            <div class="track" id="track"><div class="cue" id="cueMark"></div><div class="head" id="cueHead"></div></div>
+          </div>
+          <label class="ctl"><span>큐 위치 <b class="time" id="cueVal">1.8s</b></span><input type="range" id="cueRange" min="0.2" max="3.6" step="0.1" value="1.8"></label>
+          <p class="note">On Cue는 생성 영상 속 동작이 일어나는 시점을 손으로 그린 신호나 음악·영상에서 뽑은 신호로 맞추는 연구 시연입니다. 라이벌열전 엔딩에서 로고 모션을 음악 박자에 맞춘 작업을 AI가 영상 생성 단계에서 해 주는 셈입니다.</p>
+        </div>
+      </div>
+    </div>
+    <p class="small muted">원본: <a href="https://blog.adobe.com/en/publish/2026/11/11/adobe-max-sneaks" target="_blank" rel="noopener">Adobe MAX Sneaks 2026 소개</a> · <a href="https://video.tv.adobe.com/v/3508303" target="_blank" rel="noopener">Project Scene Sweep 영상</a> · 이미지: ChatGPT 이미지 생성 초안(2026-11-17)</p>
+  </section>
+
+  <!-- ② -->
+  <section class="station" id="st-meeting" hidden>
+    <div class="grid2">
+      <div class="box">
+        <div class="row" style="justify-content:space-between">
+          <h2>② 수료 발표회 준비 회의</h2>
+          <div class="row">
+            <button class="primary" id="mPlay">재생</button>
+            <button id="mStep">한 줄씩</button>
+            <button id="mReset">처음부터</button>
+          </div>
+        </div>
+        <p class="muted small">대화가 흘러가는 동안 오른쪽의 일정표·역할·안내문·할 일이 채워집니다. 항목마다 몇 번째 발언에서 나왔는지 표시됩니다.</p>
+        <div class="chat" id="chat"></div>
+      </div>
+      <div class="out" id="outs">
+        <div class="box"><h3>일정표</h3><div id="oSched"></div></div>
+        <div class="box"><h3>역할 분담</h3><div id="oRoles"></div></div>
+        <div class="box"><h3>안내문 초안</h3><div class="notice" id="oNotice"></div></div>
+        <div class="box"><h3>할 일</h3><div id="oActs"></div></div>
+      </div>
+    </div>
+    <div class="box" id="mineBox">
+      <h2>내 회의 메모로 해보기</h2>
+      <p class="muted small">회의 메모를 붙여 넣으면 Claude가 같은 네 칸으로 정리합니다. 메모에 없는 내용은 <b>미정</b>으로 남기도록 지시해 두었습니다. 처음 누를 때 사용 동의를 묻습니다.</p>
+      <textarea id="mine" aria-label="회의 메모">학과 축제 부스 회의
+- 부스 운영은 11월 28일 토요일 오전 10시부터 오후 4시까지
+- 수빈: 메뉴판 디자인, 25일까지
+- 준호: 재료 구매 담당, 예산 15만 원
+- 전날 27일 저녁 6시에 동아리방에서 준비 모임
+- 홍보 포스터는 AI로 초안 만들고 사람이 검수하기
+- 안내문은 단톡방에 26일에 올리기</textarea>
+      <div class="row"><button class="primary" id="mineGo">Claude로 정리하기</button><button id="mineBack" hidden>예시 회의로 돌아가기</button><span class="small muted" id="mineMsg" aria-live="polite"></span></div>
+    </div>
+    <div class="box" id="mineOff" hidden><p class="muted small">이 화면에서는 Claude 연결이 꺼져 있어 예시 회의만 볼 수 있습니다.</p></div>
+    <p class="note">실제 Claude Meetings는 2026-11-12 베타로 공개되었고, 지금은 Google Meet에서 Team·Enterprise 요금제에만 순차 제공됩니다. 개인 Pro 계정에서는 쓸 수 없습니다. 실제 회의에 쓸 때는 참가자 모두의 녹취 동의와 기관 정책을 먼저 확인해야 합니다.</p>
+    <p class="small muted">원본: <a href="https://claude.com/resources/articles/claude-meetings" target="_blank" rel="noopener">Claude Meetings 공식 설명</a> · <a href="https://www.youtube.com/watch?v=YUYeHMsqbmY" target="_blank" rel="noopener">소개 영상</a></p>
+  </section>
+
+  <!-- ③ -->
+  <section class="station" id="st-check" hidden>
+    <div class="case">
+      <div class="box">
+        <span class="eyebrow">사례</span>
+        <h2>AI로 만든 30부작 세로 드라마</h2>
+        <ul class="facts">
+          <li><b>작품</b><span>《They Left Us to Die》 · Mansa 오리지널</span></li>
+          <li><b>형식</b><span>9:16 세로형 30화, 서바이벌 호러 · 성인 대상</span></li>
+          <li><b>제작</b><span>전 회차 AI 생성. 10/29 예고편, 10/30 1화 공개</span></li>
+          <li><b>제작사 입장</b><span>실사로 만들기 전에 관객이 원하는 이야기를 시험해 보는 개념 증명</span></li>
+          <li><b>반응</b><span>Threads 등에서 "키워야 할 배우의 자리를 버렸다"는 비판이 이어짐(11/13 WIRED 보도)</span></li>
+        </ul>
+        <p class="note">성인 대상 공포물이라 수업에서는 영상을 틀지 않고 이 요약만 봅니다.</p>
+      </div>
+      <div class="box">
+        <span class="eyebrow">질문</span>
+        <h2>여러분이 만든 결과물을 실제로 쓰려면 무엇을 확인하고 누구의 동의를 받아야 할까요?</h2>
+        <p class="small muted">가장 중요하다고 생각하는 것 <b>세 가지</b>를 고르고, 내 결과물에서 꼭 확인할 것을 한 줄로 적어 주세요.</p>
+        <div class="chips" id="chips"></div>
+        <label class="ctl"><span>내 결과물에서 꼭 확인할 것 (선택)</span><input type="text" id="myLine" maxlength="80" placeholder="예: 메모 없는 책이 검색 결과에서 사라지지 않는지"></label>
+        <div class="row"><button class="primary" id="vote" disabled>제출하기</button><span class="small muted" id="voteMsg" aria-live="polite"></span></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="box"><h3>우리 반 선택 <span class="small muted" id="voteN"></span></h3><div class="bars" id="bars"></div></div>
+      <div class="box"><h3>한 줄 모음</h3><ul class="lines" id="lines"><li class="muted">제출된 한 줄이 여기에 모입니다.</li></ul></div>
+    </div>
+    <p class="small muted">원본: <a href="https://www.mansa.com/they-left-us-to-die" target="_blank" rel="noopener">작품 공식 페이지</a> · <a href="https://x.com/WIRED/status/2121209276588818694" target="_blank" rel="noopener">WIRED 보도 소개 글</a></p>
+  </section>
+
+  <footer class="close">
+    <span class="eyebrow">마지막 문장</span>
+    <p>AI가 초안을 만드는 시대에는, 무엇을 만들지 결정하고 결과를 검증하며 책임지는 사람이 더 중요해집니다.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v); } for (const k of kids) e.append(k); return e; };
+
+/* ---------- tabs ---------- */
+const TABS = ["sweep", "meeting", "check"];
+function showTab() {
+  const t = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "sweep";
+  for (const n of TABS) $("#st-" + n).hidden = n !== t;
+  document.querySelectorAll(".plan a").forEach(a => { if (a.dataset.tab === t) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  if (t !== "sweep") stopCue(); else requestAnimationFrame(() => drawCue(lastT));
+}
+window.addEventListener("hashchange", showTab);
+
+/* ---------- ① versions ---------- */
+const BASE_PROMPT = "Vertical 9:16 scene in the same cute 3D chibi figure style as the attached character sheet. Year 1901, a windy grassy cliff above the sea at dawn. LEFT: a young man in his late 20s, clean-shaven, side-parted dark brown hair, brown tweed suit, holding a wooden-box wireless telegraph receiver. A large kite on a long wire behind him. RIGHT: the man from the attached sheet, same face, center-parted wavy black hair, thin mustache, holding a small coil apparatus. Friendly rivals facing each other.";
+const VERSIONS = [
+  { id: "base", img: "img/ep5_01.jpg", name: "원본", sub: "처음 생성", prompt: BASE_PROMPT, seen: "기준 이미지입니다. 다른 버전을 고르고 손잡이를 밀어 이 원본과 비교하세요." },
+  { id: "regen", img: "img/ep5_02.jpg", name: "통째로 다시 생성", sub: "새 대화 · 같은 지시", prompt: "새 대화에서 원본과 똑같은 지시를 한 번 더 보냄 (1화 테슬라 시트도 똑같이 첨부)", seen: "두 사람이 작아지고 아래로 내려가 구도가 달라졌습니다. 시트 없이 글로만 설명한 왼쪽 인물은 머리 모양과 얼굴 인상이 바뀌었고, 수신기·연 꼬리·앞쪽 꽃과 바위도 달라졌습니다. 시트를 넣은 테슬라는 비교적 유지됩니다." },
+  { id: "item", img: "img/ep5_03.jpg", name: "손에 든 것만 수정", sub: "원본에 이어서 편집", prompt: "Edit the image with one precise change: the man on the LEFT now holds a brass Morse telegraph key instead of the receiver. Preserve everything else exactly.", seen: "지시대로 손에 든 것이 모스 전신기로 바뀌었습니다. 얼굴·옷·구도는 거의 그대로이고, 연줄 끝 위치처럼 지시하지 않은 작은 곳이 살짝 달라졌습니다." },
+  { id: "bg", img: "img/ep5_04.jpg", name: "배경만 수정", sub: "앞 버전에 이어서 편집", prompt: "Edit the image with one precise change: turn the dawn sky into a clear night sky with stars and moonlight. Preserve everything else exactly.", seen: "하늘과 조명만 밤으로 바뀌고 수평선의 해가 사라졌습니다. 두 얼굴, 소품, 연, 구도는 유지됐습니다. 수정을 이어서 쌓아도 얼굴이 버티는지 확인하는 예시입니다." },
+];
+const PARTS = ["왼쪽 얼굴(마르코니)", "오른쪽 얼굴(테슬라)", "옷·색", "손에 든 것", "연·배경", "구도·크기"];
+const STATES = ["유지", "바뀜", "?"];
+const marks = {}; // versionId -> [stateIndex...]
+let curV = VERSIONS[0];
+const vers = $("#vers");
+VERSIONS.forEach(v => {
+  const b = el("button", { class: "ver", "aria-pressed": String(v === curV) }, el("img", { src: v.img, alt: "" }), el("span", {}, el("b", { text: v.name }), el("span", { class: "small muted", text: v.sub })));
+  b.addEventListener("click", () => { curV = v; vers.querySelectorAll(".ver").forEach(x => x.setAttribute("aria-pressed", String(x === b))); showVersion(); });
+  vers.append(b);
+});
+function showVersion() {
+  $("#vTop").src = curV.img; $("#vTop").alt = curV.name;
+  $("#vTagR").textContent = curV.name;
+  $("#vTitle").textContent = curV.name;
+  $("#vPrompt").textContent = curV.prompt;
+  $("#seen").textContent = curV.seen; $("#seen").hidden = true; $("#seenBtn").textContent = "강사 관찰 메모 보기";
+  const m = marks[curV.id] || (marks[curV.id] = PARTS.map(() => 2));
+  const box = $("#checks"); box.replaceChildren();
+  PARTS.forEach((p, i) => {
+    const b = el("button", { class: "chk s" + m[i] }, el("span", { text: p }), el("b", { text: STATES[m[i]] }));
+    b.addEventListener("click", () => { m[i] = (m[i] + 1) % 3; b.className = "chk s" + m[i]; b.querySelector("b").textContent = STATES[m[i]]; });
+    box.append(b);
+  });
+}
+$("#seenBtn").addEventListener("click", () => { const h = !$("#seen").hidden; $("#seen").hidden = h; $("#seenBtn").textContent = h ? "강사 관찰 메모 보기" : "관찰 메모 접기"; });
+function setSplit(v) { $("#vTopWrap").style.clipPath = `inset(0 0 0 ${v}%)`; $("#vLine").style.left = v + "%"; }
+$("#vRange").addEventListener("input", e => setSplit(+e.target.value));
+(() => { // drag directly on the image
+  const vw = $("#viewer"); let drag = false;
+  const at = (x) => { const r = vw.getBoundingClientRect(); const v = Math.max(0, Math.min(100, (x - r.left) / r.width * 100)); $("#vRange").value = v; setSplit(v); };
+  vw.addEventListener("pointerdown", e => { drag = true; vw.setPointerCapture(e.pointerId); at(e.clientX); });
+  vw.addEventListener("pointermove", e => { if (drag) at(e.clientX); });
+  vw.addEventListener("pointerup", () => { drag = false; });
+})();
+
+/* ---------- ① cue ---------- */
+const DUR = 4;
+const cueCanvas = $("#cueCanvas");
+const cueImg = new Image(); cueImg.src = "img/ep5_01.jpg"; cueImg.onload = () => drawCue(lastT);
+const track = $("#track");
+for (let i = 0; i <= DUR; i++) { const t = el("div", { class: "tick" }, el("span", { text: i + "s" })); t.style.left = (i / DUR * 100) + "%"; track.append(t); }
+let cueAt = 1.8, raf = 0, t0 = 0, lastT = 0;
+function drawCue(t) {
+  lastT = t;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = cueCanvas.clientWidth || 220, h = cueCanvas.clientHeight || 391;
+  if (cueCanvas.width !== Math.round(w * dpr)) { cueCanvas.width = Math.round(w * dpr); cueCanvas.height = Math.round(h * dpr); }
+  const ctx = cueCanvas.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#123829"; ctx.fillRect(0, 0, w, h);
+  const act = $("#cueAct").value, d = t - cueAt, on = d >= 0 && d < 1.2;
+  let z = 1;
+  if (act === "zoom" && on) z = 1 + 0.35 * Math.sin(Math.min(d / 0.25, 1) * Math.PI / 2) * (d < 0.9 ? 1 : Math.max(0, 1 - (d - 0.9) / 0.3));
+  if (cueImg.complete && cueImg.naturalWidth) {
+    const iw = w * z, ih = h * z;
+    ctx.drawImage(cueImg, (w - iw) / 2, (h - ih) * 0.32, iw, ih);
+  }
+  if (act === "flash" && on) { ctx.fillStyle = `rgba(255,252,235,${Math.max(0, 0.9 - d * 1.3)})`; ctx.fillRect(0, 0, w, h); }
+  if (act === "title" && d >= 0) {
+    const k = Math.min(1, d / 0.18), s = 0.6 + 0.4 * k + (k === 1 ? 0 : 0.08);
+    ctx.save(); ctx.translate(w / 2, h * 0.82); ctx.scale(s, s); ctx.globalAlpha = k;
+    ctx.fillStyle = "rgba(12,42,32,.85)"; ctx.beginPath(); ctx.roundRect(-w * 0.42, -22, w * 0.84, 44, 10); ctx.fill();
+    ctx.fillStyle = "#d8b24a"; ctx.font = `700 ${Math.round(w / 12)}px "IBM Plex Sans KR", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("1901 · 무선 전신 라이벌", 0, 1); ctx.restore();
+  }
+  $("#cueHead").style.left = (t / DUR * 100) + "%";
+  $("#cueTime").textContent = t.toFixed(1) + "s / " + DUR.toFixed(1) + "s";
+}
+function setCue(v) { cueAt = v; $("#cueMark").style.left = (v / DUR * 100) + "%"; $("#cueVal").textContent = v.toFixed(1) + "s"; }
+function loop(now) { const t = ((now - t0) / 1000) % DUR; drawCue(t); raf = requestAnimationFrame(loop); }
+function stopCue() { if (raf) cancelAnimationFrame(raf); raf = 0; $("#cuePlay").textContent = "재생"; }
+$("#cuePlay").addEventListener("click", () => { if (raf) { stopCue(); return; } t0 = performance.now() - lastT * 1000; raf = requestAnimationFrame(loop); $("#cuePlay").textContent = "정지"; });
+$("#cueRange").addEventListener("input", (e) => { setCue(+e.target.value); if (!raf) drawCue(Math.min(DUR - 0.01, cueAt + 0.2)); });
+$("#cueAct").addEventListener("change", () => { if (!raf) drawCue(Math.min(DUR - 0.01, cueAt + 0.2)); });
+
+/* ---------- ② meeting ---------- */
+const LINES = [
+  { who: "지윤", text: "수료 발표회는 12월 1일 화요일 저녁 7시 30분, 줌으로 하죠.", sched: ["12/1(화) 19:30", "수료 발표회 (Zoom)"], notice: { date: "12월 1일(화) 저녁 7시 30분", place: "Zoom (링크는 당일 공지방)" } },
+  { who: "민호", text: "한 사람당 3분씩이면 8팀이라 30분 정도 걸리겠네요.", notice: { format: "1인 3분 발표, 약 30분" } },
+  { who: "서연", text: "발표 순서표는 제가 만들게요. 11월 27일까지 공유할게요.", role: ["서연", "발표 순서표 작성·공유", "11/27"] },
+  { who: "도현", text: "리허설을 한 번 하면 좋겠어요. 11월 29일 일요일 오후 2시 어때요?", sched: ["11/29(일) 14:00", "발표 리허설 (선택 참여)"] },
+  { who: "지윤", text: "좋아요. 리허설 줌 링크는 제가 열게요.", role: ["지윤", "리허설 Zoom 개설", "11/28"] },
+  { who: "민호", text: "결과물 링크를 미리 받아야 화면 공유가 빨라요. 11월 28일까지 패들렛에 올려 달라고 하죠.", act: "11/28까지 결과물 링크 패들렛 제출 받기", notice: { submit: "11월 28일(토)까지 결과물 링크를 패들렛에 올려 주세요" } },
+  { who: "서연", text: "안내문은 짧게, 날짜·시간·제출물 세 가지만 넣어요.", act: "안내문은 날짜·시간·제출물 세 줄로" },
+  { who: "도현", text: "수료증 파일 이름은 '이름_수료증.pdf'로 맞춰 둘게요.", role: ["도현", "수료증 파일 정리 (이름_수료증.pdf)", "11/30"] },
+  { who: "지윤", text: "AI로 만든 화면을 쓰는 팀은 발표 때 그 사실을 한 줄로 밝히기로 해요.", act: "AI 사용 여부를 발표 첫 장에 한 줄로 공개", notice: { ai: "AI로 만든 이미지·화면을 썼다면 발표 첫 장에 한 줄로 밝혀 주세요" } },
+  { who: "민호", text: "마지막에 사후 설문 링크도 붙입시다.", act: "발표회 끝에 사후 설문 링크 안내" },
+];
+let mi = 0, mTimer = 0, mineMode = false;
+const chat = $("#chat");
+LINES.forEach((l, i) => chat.append(el("div", { class: "msg" }, el("span", { class: "n", text: String(i + 1).padStart(2, "0") }), el("p", {}, el("span", { class: "who", text: l.who }), l.text))));
+function tableOf(heads, rows, cls = []) {
+  if (!rows.length) return el("p", { class: "empty", text: "아직 나온 내용이 없습니다." });
+  const t = el("table"), hr = el("tr");
+  heads.forEach(h => hr.append(el("th", { text: h }))); t.append(el("thead", {}, hr));
+  const tb = el("tbody");
+  rows.forEach(r => { const tr = el("tr"); if (r.fresh) tr.className = "fresh"; r.cells.forEach((c, j) => { const td = el("td", { text: c }); if (cls[j]) td.className = cls[j]; tr.append(td); }); tb.append(tr); });
+  t.append(tb); return t;
+}
+function noticeOf(n) {
+  const box = $("#oNotice"); box.replaceChildren();
+  const gap = (t) => el("span", { class: "gap", text: t });
+  const line = (label, v, miss) => { box.append(label, v ? v : gap(miss), "\n"); };
+  box.append("[바이브코딩 워크숍 수료 발표회 안내]\n\n");
+  line("· 일시: ", n.date, "[날짜·시간 미정]");
+  line("· 장소: ", n.place, "[장소 미정]");
+  line("· 발표: ", n.format, "[발표 방식 미정]");
+  line("· 제출: ", n.submit, "[제출물 미정]");
+  if (n.ai) line("· 공개: ", n.ai, "");
+}
+function renderMeeting(upto) {
+  chat.querySelectorAll(".msg").forEach((m, i) => m.classList.toggle("on", i < upto));
+  const sched = [], roles = [], acts = [], n = {};
+  LINES.slice(0, upto).forEach((l, i) => {
+    const fresh = i === upto - 1, src = `#${i + 1}`;
+    if (l.sched) sched.push({ fresh, cells: [l.sched[0], l.sched[1], src] });
+    if (l.role) roles.push({ fresh, cells: [l.role[0], l.role[1], l.role[2], src] });
+    if (l.act) acts.push({ fresh, t: l.act, src });
+    if (l.notice) Object.assign(n, l.notice);
+  });
+  $("#oSched").replaceChildren(tableOf(["언제", "무엇", "근거"], sched, ["when", "", "src"]));
+  $("#oRoles").replaceChildren(tableOf(["누가", "무엇을", "기한", "근거"], roles, ["", "", "when", "src"]));
+  noticeOf(n);
+  const ul = el("ul", { class: "acts" });
+  acts.forEach(a => { const li = el("li", {}, el("span", { text: a.t }), el("span", { class: "src", text: a.src })); if (a.fresh) li.className = "fresh"; ul.append(li); });
+  $("#oActs").replaceChildren(acts.length ? ul : el("p", { class: "empty", text: "아직 나온 내용이 없습니다." }));
+  const on = chat.querySelectorAll(".msg.on"); if (on.length) { const m = on[on.length - 1]; chat.scrollTop = Math.max(0, m.offsetTop - chat.offsetTop - chat.clientHeight + m.offsetHeight + 8); }
+}
+function mStop() { clearInterval(mTimer); mTimer = 0; $("#mPlay").textContent = mi >= LINES.length ? "다시 재생" : "재생"; }
+function mNext() { if (mi >= LINES.length) { mStop(); return; } mi++; renderMeeting(mi); if (mi >= LINES.length) mStop(); }
+function leaveMine() { if (!mineMode) return; mineMode = false; $("#mineBack").hidden = true; chat.style.opacity = ""; }
+$("#mPlay").addEventListener("click", () => { leaveMine(); if (mTimer) { mStop(); return; } if (mi >= LINES.length) { mi = 0; renderMeeting(0); } $("#mPlay").textContent = "일시정지"; mNext(); mTimer = setInterval(mNext, 1700); });
+$("#mStep").addEventListener("click", () => { leaveMine(); mStop(); mNext(); });
+$("#mReset").addEventListener("click", () => { leaveMine(); mStop(); mi = 0; renderMeeting(0); });
+$("#mineBack").addEventListener("click", () => { leaveMine(); mStop(); mi = LINES.length; renderMeeting(mi); });
+
+/* ---------- ③ check ---------- */
+const CHOICES = ["기획 의도 지키기", "인물·로고 일관성", "초상·음성 동의", "사실·출처 검증", "AI 사용 공개", "저작권·학습 자료", "개인정보 보호", "최종 검수자 지정"];
+let picks = new Set();
+const chips = $("#chips");
+CHOICES.forEach(c => {
+  const b = el("button", { "aria-pressed": "false", text: c });
+  b.addEventListener("click", () => {
+    if (picks.has(c)) picks.delete(c); else { if (picks.size >= 3) { $("#voteMsg").textContent = "세 가지까지 고를 수 있습니다."; return; } picks.add(c); }
+    b.setAttribute("aria-pressed", String(picks.has(c)));
+    $("#voteMsg").textContent = `${picks.size}/3 선택`;
+    $("#vote").disabled = picks.size === 0;
+  });
+  chips.append(b);
+});
+function renderVotes(list) {
+  const cnt = Object.fromEntries(CHOICES.map(c => [c, 0]));
+  list.forEach(v => (Array.isArray(v.picks) ? v.picks : []).forEach(p => { if (p in cnt) cnt[p]++; }));
+  const max = Math.max(1, ...Object.values(cnt));
+  const bars = $("#bars"); bars.replaceChildren();
+  CHOICES.slice().sort((a, b) => cnt[b] - cnt[a]).forEach(c => {
+    const i = el("i"); i.style.width = (cnt[c] / max * 100) + "%";
+    bars.append(el("div", { class: "b" }, el("span", { text: c }), el("div", { class: "t" }, i), el("span", { class: "c", text: String(cnt[c]) })));
+  });
+  $("#voteN").textContent = list.length ? `· ${list.length}명 참여` : "";
+  const ls = list.filter(v => typeof v.line === "string" && v.line.trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
+  const ul = $("#lines"); ul.replaceChildren();
+  if (!ls.length) ul.append(el("li", { class: "muted", text: "제출된 한 줄이 여기에 모입니다." }));
+  ls.slice(0, 40).forEach(v => ul.append(el("li", { text: v.line.trim().slice(0, 80) })));
+}
+renderVotes([]);
+let localVote = null;
+
+/* ---------- capabilities ---------- */
+function localOnly() {
+  $("#vote").onclick = () => { localVote = { picks: [...picks], line: $("#myLine").value, at: Date.now() }; renderVotes([localVote]); $("#voteMsg").textContent = "이 화면에서만 보입니다. 우리 반 집계는 Claude 체험실 링크에서 열립니다."; };
+}
+async function wire() {
+  localOnly();
+  if (!window.claude || !window.claude.use) { $("#mineBox").hidden = true; $("#mineOff").hidden = false; return; }
+  // sample: 내 회의 메모 정리
+  claude.use("sample").then(sample => {
+    if (!sample) { $("#mineBox").hidden = true; $("#mineOff").hidden = false; return; }
+    $("#mineGo").addEventListener("click", async () => {
+      const memo = $("#mine").value.trim();
+      if (!memo) { $("#mineMsg").textContent = "메모를 먼저 붙여 넣어 주세요."; return; }
+      $("#mineGo").disabled = true; $("#mineMsg").textContent = "정리하는 중입니다…";
+      try {
+        const r = await sample.json(
+          "다음 한국어 회의 메모를 네 칸으로 정리해. 메모에 없는 사실은 만들지 말고, 정해지지 않은 값은 \"미정\"으로 써. " +
+          "JSON 객체만 답해: {\"schedule\":[{\"when\":\"\",\"what\":\"\"}],\"roles\":[{\"who\":\"\",\"task\":\"\",\"due\":\"\"}],\"notice\":\"참가자에게 보낼 5줄 이내 안내문\",\"actions\":[\"\"]}\n\n회의 메모:\n" + memo.slice(0, 4000),
+          { modelTier: "quick" });
+        mStop(); mineMode = true;
+        chat.querySelectorAll(".msg").forEach(m => m.classList.remove("on")); chat.style.opacity = ".5";
+        const S = Array.isArray(r.schedule) ? r.schedule : [], R = Array.isArray(r.roles) ? r.roles : [], A = Array.isArray(r.actions) ? r.actions : [];
+        $("#oSched").replaceChildren(tableOf(["언제", "무엇", "근거"], S.map(x => ({ fresh: true, cells: [String(x.when ?? "미정"), String(x.what ?? ""), "메모"] })), ["when", "", "src"]));
+        $("#oRoles").replaceChildren(tableOf(["누가", "무엇을", "기한", "근거"], R.map(x => ({ fresh: true, cells: [String(x.who ?? "미정"), String(x.task ?? ""), String(x.due ?? "미정"), "메모"] })), ["", "", "when", "src"]));
+        $("#oNotice").textContent = String(r.notice ?? "");
+        const ul = el("ul", { class: "acts" }); A.forEach(a => ul.append(el("li", { class: "fresh" }, el("span", { text: String(a) }))));
+        $("#oActs").replaceChildren(A.length ? ul : el("p", { class: "empty", text: "할 일이 나오지 않았습니다." }));
+        $("#mineBack").hidden = false;
+        $("#mineMsg").textContent = "정리했습니다. 메모와 대조해 빠지거나 지어낸 내용이 없는지 확인해 보세요.";
+        $("#outs").scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (e) {
+        const code = e && e.code;
+        if (code === "not_granted") { $("#mineMsg").textContent = "Claude 사용을 허용하지 않아 예시 회의만 볼 수 있습니다."; $("#mineGo").hidden = true; }
+        else if (code === "rate_limited") $("#mineMsg").textContent = "요청이 많습니다. 잠시 뒤 다시 눌러 주세요.";
+        else if (code === "invalid_json") $("#mineMsg").textContent = "정리 결과를 읽지 못했습니다. 메모를 조금 줄여 다시 눌러 주세요.";
+        else $("#mineMsg").textContent = "정리하지 못했습니다. 잠시 뒤 다시 눌러 주세요.";
+      } finally { $("#mineGo").disabled = false; }
+    });
+  });
+  // db + user: 우리 반 선택 집계
+  const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+  const voteBtn = $("#vote");
+  if (!db || !user) return;
+  const uid = await user.id();
+  const myRef = db.doc("votes/" + uid);
+  let loaded = false;
+  const timer = setTimeout(() => { if (!loaded) $("#voteN").textContent = "· 집계를 불러오지 못했습니다"; }, 10000);
+  db.collection("votes").onSnapshot(snap => {
+    loaded = true; clearTimeout(timer);
+    const list = snap.docs.map(d => d.data() || {});
+    renderVotes(list);
+  }, () => { clearTimeout(timer); $("#voteN").textContent = "· 집계를 볼 권한이 없습니다"; });
+  try {
+    const mine = await myRef.get();
+    const v = mine.exists ? mine.data() : null;
+    if (v && Array.isArray(v.picks)) {
+      picks = new Set(v.picks.filter(p => CHOICES.includes(p)));
+      chips.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(picks.has(b.textContent))));
+      $("#myLine").value = typeof v.line === "string" ? v.line : "";
+      voteBtn.disabled = picks.size === 0; voteBtn.textContent = "다시 제출하기";
+      $("#voteMsg").textContent = "이미 제출했습니다. 바꾸고 다시 제출할 수 있습니다.";
+    }
+  } catch (_) {}
+  let busy = false;
+  voteBtn.onclick = async () => {
+    if (busy || !picks.size) return; busy = true; voteBtn.disabled = true;
+    try {
+      await myRef.set({ picks: [...picks], line: $("#myLine").value.trim().slice(0, 80), at: Date.now() });
+      voteBtn.textContent = "다시 제출하기"; $("#voteMsg").textContent = "제출했습니다.";
+    } catch (e) {
+      $("#voteMsg").textContent = (e && (e.code === "permission_denied" || e.code === "not_granted")) ? "이 링크는 보기 전용입니다. 강사에게 참여 권한을 요청해 주세요." : "제출하지 못했습니다. 다시 눌러 주세요.";
+    } finally { busy = false; voteBtn.disabled = picks.size === 0; }
+  };
+}
+
+/* ---------- start ---------- */
+showVersion(); setSplit(50); setCue(1.8);
+showTab();
+requestAnimationFrame(() => { drawCue(cueAt + 0.2); renderMeeting(LINES.length); mi = LINES.length; $("#mPlay").textContent = "다시 재생"; });
+window.addEventListener("resize", () => drawCue(lastT));
+document.fonts && document.fonts.ready.then(() => drawCue(lastT));
+wire();
+})();
+</script>
+
+</body>
+</html>
